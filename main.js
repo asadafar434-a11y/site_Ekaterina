@@ -155,8 +155,44 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ----------------------------------------------------------
-     7. CONTACT FORM — validation + submit
+     7. CONTACT FORM — Telegram Bot integration
+     ⚠️  Замените BOT_TOKEN и CHAT_ID своими данными
   ---------------------------------------------------------- */
+  const TG_TOKEN   = '8767891934:AAFA4dAKiovPp6Ea4zGiGfbAPKyZFtAMrfI';
+  const TG_CHAT_ID = '6071630478';
+
+  async function sendToTelegram(data) {
+    const text =
+      `📋 <b>Новая заявка с сайта</b>\n\n` +
+      `👤 <b>Имя:</b> ${escapeHtml(data.name)}\n` +
+      `📧 <b>Email:</b> ${escapeHtml(data.email)}\n` +
+      `📞 <b>Телефон:</b> ${data.phone ? escapeHtml(data.phone) : '—'}\n` +
+      `💬 <b>Цели:</b>\n${data.message ? escapeHtml(data.message) : '—'}`;
+
+    const res = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id:    TG_CHAT_ID,
+        text:       text,
+        parse_mode: 'HTML',
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.description || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
   const form        = document.getElementById('contactForm');
   const formSuccess = document.getElementById('formSuccess');
 
@@ -164,9 +200,10 @@ document.addEventListener('DOMContentLoaded', () => {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      // Simple validation
-      const name  = form.querySelector('#formName');
-      const email = form.querySelector('#formEmail');
+      const name    = form.querySelector('#formName');
+      const email   = form.querySelector('#formEmail');
+      const phone   = form.querySelector('#formPhone');
+      const message = form.querySelector('#formMessage');
       let valid = true;
 
       clearErrors(form);
@@ -183,16 +220,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (!valid) return;
 
-      // Simulate send (replace with real endpoint if needed)
-      const submitBtn = form.querySelector('.btn-submit');
+      const submitBtn  = form.querySelector('.btn-submit');
+      const btnSpan    = submitBtn.querySelector('span');
+      const btnSvg     = submitBtn.querySelector('svg');
       submitBtn.disabled = true;
-      submitBtn.querySelector('span').textContent = 'Отправка...';
+      btnSpan.textContent = 'Отправка...';
+      if (btnSvg) btnSvg.style.opacity = '0';
 
-      await delay(1200);
+      try {
+        await sendToTelegram({
+          name:    name.value.trim(),
+          email:   email.value.trim(),
+          phone:   phone  ? phone.value.trim()   : '',
+          message: message ? message.value.trim() : '',
+        });
 
-      // Show success
-      form.style.display = 'none';
-      formSuccess.classList.add('visible');
+        form.style.display = 'none';
+        formSuccess.classList.add('visible');
+
+      } catch (err) {
+        console.error('Telegram send error:', err);
+        btnSpan.textContent = 'Ошибка — попробуйте ещё раз';
+        submitBtn.disabled = false;
+        if (btnSvg) btnSvg.style.opacity = '1';
+
+        // через 3 сек восстанавливаем кнопку
+        setTimeout(() => {
+          btnSpan.textContent = 'Отправить';
+        }, 3000);
+      }
     });
 
     // Real-time clear error on input
@@ -234,9 +290,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
   }
 
-  function delay(ms) {
-    return new Promise(res => setTimeout(res, ms));
-  }
 
   /* ----------------------------------------------------------
      8. HERO IMAGE — subtle parallax on mousemove
