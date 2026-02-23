@@ -1009,12 +1009,14 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: border-color 0.3s, background 0.3s;
+  color: rgba(255,255,255,0.5);
+  transition: border-color 0.3s, background 0.3s, color 0.3s;
 }
 
 .contact-info__item:hover .contact-info__icon {
   border-color: var(--green);
   background: rgba(0,212,146,0.1);
+  color: var(--green);
 }
 
 .contact-info__label {
